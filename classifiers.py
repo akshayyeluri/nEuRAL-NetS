@@ -32,8 +32,8 @@ def SetupClassifiers(algs = ['RF', 'GDB', 'ADB']):
     This sets up the grids to grid search for a set of learning
     algorithms
     '''
-    RF_parms = {'n_estimators':[20, 50, 100], 'max_features': ['sqrt', .5, 1], 
-                'min_samples_leaf': [5,20,50]}
+    RF_parms = {'n_estimators':[50, 100], 'max_features': ['sqrt', .5, 1], 
+                'min_samples_leaf': [20,50]}
     #https://www.analyticsvidhya.com/blog/2016/02/complete-guide-parameter-tuning-gradient-boosting-gbm-python/
     ADB_parms = {'learning_rate':[.05, .1, .2], 'n_estimators':[20,50,80]} 
     GDB_parms = {'learning_rate':[.05, .1, .2], 'n_estimators':[20,50,80]}

@@ -21,7 +21,7 @@ np.random.seed(69)
 
 # Feature engineering
 # ----------------------------------------------------------
-def transform_df(df0, train=False, as_df=False):
+def transform_df(df0, train=False, as_df=False, **kwargs):
     '''
     This function feature engineers an initial dataframe
 
@@ -53,7 +53,7 @@ def transform_df(df0, train=False, as_df=False):
         # newY = np.concatenate(((df0['mid'].values[2:] - df0['mid'].values[:-2]), df0['y'].values[-2:]))
         
         # Get smooth label y's
-        k = 20 # Window size for smoothing
+        k = kwargs.get('k', 20) # Window size for smoothing
         newY = df0['y'].values.copy()
         newY[k:-k] = smooth_labels(df0['mid'].values, k=k)
         return X, df0['y'].values, newY
