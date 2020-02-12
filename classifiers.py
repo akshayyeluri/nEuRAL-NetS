@@ -15,17 +15,41 @@ cwd = os.path.abspath(os.path.curdir)
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
-
 from sklearn.metrics import roc_auc_score as auc
 from sklearn.model_selection import GridSearchCV, KFold
+
+from skorch import NeuralNetClassifier
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 np.random.seed(69)
 n_cores = multiprocessing.cpu_count()
 
+
+# Neural Net shit
+# ----------------------------------------------------------
+class NNModel(nn.Module):
+    def __init__(self, nFeat, hidden, drop, nonlin=F.relu):
+        super(NNModel, self).__init__()
+        self.dense0 = nn.Linear(nFeat, hidden)
+        self.nonlin = nonlin
+        self.dropout = nn.Dropout(drop)
+        self.output = nn.Linear(hidden, 2)
+
+    def forward(self, X, **kwargs):
+        X = self.nonlin(self.dense0(X))
+        X = self.dropout(X)
+        X = F.softmax(self.output(X), dim=-1)
+        return X
+
+
+
+
 # Hyperparameter optimization funcs
 # ----------------------------------------------------------
 
-def SetupClassifiers(algs = ['RF', 'GDB', 'ADB']):
+def SetupClassifiers(algs = ['RF', 'GDB', 'ADB', 'NN'], nFeat=27):
     ''' 
     This sets up the grids to grid search for a set of learning
     algorithms
@@ -35,16 +59,29 @@ def SetupClassifiers(algs = ['RF', 'GDB', 'ADB']):
     #https://www.analyticsvidhya.com/blog/2016/02/complete-guide-parameter-tuning-gradient-boosting-gbm-python/
     ADB_parms = {'learning_rate':[.05, .1, .2], 'n_estimators':[20,50,80]} 
     GDB_parms = {'learning_rate':[.05, .1, .2], 'n_estimators':[20,50,80]}
+    NN_parms = { 
+                 'lr': [1e-4, 1e-3, 1e-2], 'max_epochs': [1, 2], 
+                 'module__hidden': [10, 20],
+                 'module__drop': [0.2, 0.4]
+               }
      #Classifiers List to iterate through'''
     clsfr = {
             'ADB': (AdaBoostClassifier(), ADB_parms),
              'RF': (RandomForestClassifier(max_features = 0.5, min_samples_leaf = 5, n_estimators = 100), RF_parms),
-             'GDB': (GradientBoostingClassifier(), GDB_parms) }
+             'GDB': (GradientBoostingClassifier(), GDB_parms),
+             'NN': (NeuralNetClassifier(NNModel, max_epochs=3, lr=0.1,
+                                        module__hidden=10, module__drop=0.2,
+                                        # Shuffle training data on each epoch
+                                        iterator_train__shuffle=True,
+                                        module__nFeat=nFeat),
+                    NN_parms)
+            }
     classifiers = [(k,) + v for k, v in clsfr.items() if k in algs] 
     return classifiers
 
 
-def TuneClassifiers(data_train, data_test, labels_train, labels_test, algs=['RF', 'GDB', 'ADB']):
+def TuneClassifiers(data_train, data_test, labels_train, labels_test, 
+                    algs=['RF', 'GDB', 'ADB', 'NN'], nFeat=27):
     '''
     This runs grid search to find the best parameters for models
 
@@ -70,21 +107,21 @@ def TuneClassifiers(data_train, data_test, labels_train, labels_test, algs=['RF'
     for c, func, parameters in classifiers:
         model = func 
         model.fit(data_train,labels_train)
-        pred_train = model.predict(data_train)
-        pred_test = model.predict(data_test)
-        
-        acc_train = ((pred_train == labels_train).mean()) 
-        acc_test = ((pred_test == labels_test).mean())
 
-        auc_train = auc(labels_train, model.predict_proba(data_train)[:, 1])
-        auc_test = auc(labels_test, model.predict_proba(data_test)[:, 1])
+        pred_train = model.predict_proba(data_train)[:, 1]
+        pred_test = model.predict_proba(data_test)[:, 1]
+        
+        auc_train = auc(labels_train, pred_train)
+        auc_test = auc(labels_test, pred_test)
+
+        acc_train = ((np.round(pred_train) == labels_train).mean()) 
+        acc_test = ((np.round(pred_test) == labels_test).mean())
 
         tune_results.loc[res] = [c, 'train', 'base', acc_train, auc_train]
         tune_results.loc[res+1] = [c, 'test', 'base', acc_test, auc_test]
         res = res+2
     
     # run model tuning
-    
     all_models = {}
     for c, func, parameters in classifiers:
         t0 = time()
@@ -121,7 +158,7 @@ def TuneClassifiers(data_train, data_test, labels_train, labels_test, algs=['RF'
 
 
 
-# Hyperparameter optimization funcs
+# Cross Validation funcs
 # ----------------------------------------------------------
 
 def run_fold(inp, model, X0, Y0, get_pars, process):
@@ -134,6 +171,8 @@ def run_fold(inp, model, X0, Y0, get_pars, process):
     model.fit(X, Y)
     preds = model.predict_proba(valX)[:, 1]
     return auc(valY, preds), (np.round(preds) == valY).mean()
+
+
 
 def cross_val(model, X0, Y0, process_func_pair, k=3, verbose=True):
     '''
@@ -165,13 +204,6 @@ def cross_val(model, X0, Y0, process_func_pair, k=3, verbose=True):
 
     aucs, accs = zip(*res)
     return np.array(aucs), np.array(accs)
-
-
-
-# Ensembling
-# ----------------------------------------------------------
-
-
 
 
 
