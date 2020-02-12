@@ -21,8 +21,6 @@ from sklearn.model_selection import GridSearchCV, KFold
 
 np.random.seed(69)
 n_cores = multiprocessing.cpu_count()
-print(f'Number of cores to use: {n_cores}')
-
 
 # Hyperparameter optimization funcs
 # ----------------------------------------------------------
@@ -172,6 +170,7 @@ def cross_val(model, X0, Y0, process_func_pair, k=3, verbose=True):
 
 # Ensembling
 # ----------------------------------------------------------
+
 
 
 

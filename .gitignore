@@ -1,7 +1,11 @@
 # Project specific
-submission.csv
+submission*.csv
 junk/*
+old*/*
 *.pkl
+*.pars
+*.swp
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -55,7 +55,8 @@ def transform_df(df0, train=False, as_df=False, **kwargs):
         # Get smooth label y's
         k = kwargs.get('k', 20) # Window size for smoothing
         newY = df0['y'].values.copy()
-        newY[k:-k] = smooth_labels(df0['mid'].values, k=k)
+        if k:
+            newY[k:-k] = smooth_labels(df0['mid'].values, k=k)
         return X, df0['y'].values, newY
     return X
 
