@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import re
 
+from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, KFold
 
@@ -77,7 +78,7 @@ def transform_df(df0, train=False, as_df=False, **kwargs):
         # newY = np.concatenate(((df0['mid'].values[2:] - df0['mid'].values[:-2]), df0['y'].values[-2:]))
         
         # Get smooth label y's
-        k = kwargs.get('k', 20) # Window size for smoothing
+        k = kwargs.get('k') # Window size for smoothing
         newY = df0['y'].values.copy()
         if k:
             newY[k:-k] = smooth_labels(df0['mid'].values, k=k)
@@ -111,7 +112,7 @@ def smooth_labels(mids, k=20, alpha=1.0):
 
 # Data processing / Normalization
 # ----------------------------------------------------------
-def get_pars_for_processing(X, group_inds = []):
+def get_pars_for_processing(X, group_inds = [], n_fin_feat=12):
     '''
     This function gets parameters from training data to process the training
     and testing data (passing these parameters as args to process_with_pars)
@@ -129,17 +130,23 @@ def get_pars_for_processing(X, group_inds = []):
         scaler.mean_[inds] = (scaler.mean_[inds]).mean()
         scaler.var_[inds] = (scaler.var_[inds]).mean()
     scaler.scale_ = np.sqrt(scaler.var_)
-    return scaler
+    where_nan = np.isnan(X)
+    X_n = scaler.transform(X)
+    X_n[where_nan] = 0
+    pca = PCA(n_fin_feat)
+    pca.fit(X_n)
+    return scaler, pca
 
 def process_with_pars(X, params):
     '''
     Function that takes training / test data, 
     and process it for training / evaluation
     '''
-    scaler = params
+    scaler, pca = params
     where_nan = np.isnan(X)
     X = scaler.transform(X)
     X[where_nan] = 0
+    X = pca.transform(X)
     return X
 
 

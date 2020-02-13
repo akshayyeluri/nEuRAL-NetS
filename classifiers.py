@@ -80,7 +80,8 @@ def SetupClassifiers(algs = ['RF', 'GDB', 'ADB', 'NN'], nFeat=27):
     return classifiers
 
 
-def TuneClassifiers(data_train, data_test, labels_train, labels_test, 
+def TuneClassifiers(data_train, data_test, labels_train, labels_test,
+                    run_base=False,
                     algs=['RF', 'GDB', 'ADB', 'NN'], nFeat=27, k=3):
     '''
     This runs grid search to find the best parameters for models
@@ -101,12 +102,13 @@ def TuneClassifiers(data_train, data_test, labels_train, labels_test,
     '''
     classifiers = SetupClassifiers(algs)
     cols = ['Classifier', 'Type', 'Tuning', 'Accuracy', 'AUC']
-    res_shape = (2 * len(classifiers), len(cols))
+    res_shape = ((1 + int(run_base)) * len(classifiers), len(cols))
     res = 0
     tune_results = pd.DataFrame(columns=cols, data=np.empty(res_shape))
      
     # run the base (non-tuned) models
-    for c, func, parameters in classifiers:
+    if run_base:
+      for c, func, parameters in classifiers:
         model = func 
         model.fit(data_train,labels_train)
 
@@ -177,7 +179,7 @@ def run_fold(inp, model, X0, Y0, get_pars, process):
 
 
 
-def cross_val(model, X0, Y0, process_func_pair, k=3, verbose=True):
+def cross_val(model, X0, Y0, process_func_pair, k=3, verbose=True, parallelize=True):
     '''
     This function performs cross_validation (kfold) on a model
 
@@ -200,10 +202,14 @@ def cross_val(model, X0, Y0, process_func_pair, k=3, verbose=True):
     kf = KFold(n_splits=k, shuffle=False)
 
     run_fold_w_args = partial(run_fold, model=model, X0=X0, Y0=Y0, get_pars=get_pars, process=process)
-    if verbose:
+    if verbose and parallelize:
         res = list(tqdm.tqdm(pool.imap(run_fold_w_args, kf.split(X0)), desc='CV fold'))
+    elif parallelize:
+        res = list(pool.imap(run_fold_w_args, kf.split(X0)))
+    elif verbose:
+        res = list(tqdm.tqdm(map(run_fold_w_args, kf.split(X0)), desc='CV fold'))
     else:
-        res = list(pool.imap(run_fold_w_args, kf.split(X0)), desc='CV fold')
+        res = list(map(run_fold_w_args, kf.split(X0)))
 
     aucs, accs = zip(*res)
     return np.array(aucs), np.array(accs)
