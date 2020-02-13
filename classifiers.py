@@ -81,7 +81,7 @@ def SetupClassifiers(algs = ['RF', 'GDB', 'ADB', 'NN'], nFeat=27):
 
 
 def TuneClassifiers(data_train, data_test, labels_train, labels_test, 
-                    algs=['RF', 'GDB', 'ADB', 'NN'], nFeat=27):
+                    algs=['RF', 'GDB', 'ADB', 'NN'], nFeat=27, k=3):
     '''
     This runs grid search to find the best parameters for models
 
@@ -89,6 +89,8 @@ def TuneClassifiers(data_train, data_test, labels_train, labels_test,
         -data_train/test: train/testing data as 2D np.arrays
         -labels_train/test: binary (0/1) labels for training/testing data
         -algs: which algs to grid search
+        -nFeat: number of input features
+        -k: Number of folds for grid search cross validation
 
     Returns:
         -results_train: pd.DataFrame of training results
@@ -127,7 +129,8 @@ def TuneClassifiers(data_train, data_test, labels_train, labels_test,
         t0 = time()
         print("Tuning", c, "...")
         
-        tun_model = GridSearchCV(func, parameters, n_jobs=n_cores, cv=3, iid=True) 
+        inner_cv = KFold(n_splits=k, shuffle=False) 
+        tun_model = GridSearchCV(func, parameters, n_jobs=n_cores, cv=inner_cv, iid=True) 
         tun_model.fit(data_train,labels_train)
         
         t1 = time()
@@ -194,7 +197,7 @@ def cross_val(model, X0, Y0, process_func_pair, k=3, verbose=True):
 
     pool = multiprocessing.Pool(n_cores)
     get_pars, process = process_func_pair
-    kf = KFold(n_splits=k, shuffle=True)
+    kf = KFold(n_splits=k, shuffle=False)
 
     run_fold_w_args = partial(run_fold, model=model, X0=X0, Y0=Y0, get_pars=get_pars, process=process)
     if verbose:
