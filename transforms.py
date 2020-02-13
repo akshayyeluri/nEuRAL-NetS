@@ -112,7 +112,7 @@ def smooth_labels(mids, k=20, alpha=1.0):
 
 # Data processing / Normalization
 # ----------------------------------------------------------
-def get_pars_for_processing(X, group_inds = [], n_fin_feat=12):
+def get_pars_for_processing(X, group_inds = [], n_fin_feat=27):
     '''
     This function gets parameters from training data to process the training
     and testing data (passing these parameters as args to process_with_pars)
@@ -130,23 +130,25 @@ def get_pars_for_processing(X, group_inds = [], n_fin_feat=12):
         scaler.mean_[inds] = (scaler.mean_[inds]).mean()
         scaler.var_[inds] = (scaler.var_[inds]).mean()
     scaler.scale_ = np.sqrt(scaler.var_)
-    where_nan = np.isnan(X)
-    X_n = scaler.transform(X)
-    X_n[where_nan] = 0
-    pca = PCA(n_fin_feat)
-    pca.fit(X_n)
-    return scaler, pca
+    #where_nan = np.isnan(X)
+    #X_n = scaler.transform(X)
+    #X_n[where_nan] = 0
+    #pca = PCA(n_fin_feat)
+    #pca.fit(X_n)
+    #return scaler, pca
+    return scaler
 
 def process_with_pars(X, params):
     '''
     Function that takes training / test data, 
     and process it for training / evaluation
     '''
-    scaler, pca = params
+    #scaler, pca = params
+    scaler = params
     where_nan = np.isnan(X)
     X = scaler.transform(X)
     X[where_nan] = 0
-    X = pca.transform(X)
+    #X = pca.transform(X)
     return X
 
 

@@ -32,13 +32,16 @@ n_cores = multiprocessing.cpu_count()
 class NNModel(nn.Module):
     def __init__(self, nFeat, hidden, drop, nonlin=F.relu):
         super(NNModel, self).__init__()
-        self.dense0 = nn.Linear(nFeat, hidden)
+        self.dense0 = nn.Linear(nFeat, 20)
+        self.dense1 = nn.Linear(20, hidden)
         self.nonlin = nonlin
         self.dropout = nn.Dropout(drop)
         self.output = nn.Linear(hidden, 2)
 
     def forward(self, X, **kwargs):
         X = self.nonlin(self.dense0(X))
+        X = self.dropout(X)
+        X = self.nonlin(self.dense1(X))
         X = self.dropout(X)
         X = F.softmax(self.output(X), dim=-1)
         return X
